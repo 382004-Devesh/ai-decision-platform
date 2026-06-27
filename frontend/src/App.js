@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Bar } from "react-chartjs-2";
 import { Chart as ChartJS, BarElement, CategoryScale, LinearScale, Tooltip, Legend } from "chart.js";
 
@@ -9,6 +9,15 @@ function App() {
   const [experience, setExperience] = useState("");
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [history, setHistory] = useState([]);
+  // Load history from browser
+useEffect(() => {
+  const savedHistory = localStorage.getItem("predictionHistory");
+
+  if (savedHistory) {
+    setHistory(JSON.parse(savedHistory));
+  }
+}, []);
 
   const handleSubmit = async () => {
     // ✅ validation
@@ -38,6 +47,23 @@ function App() {
 
       const data = await response.json();
       setResult(data);
+      
+const updatedHistory = [
+  {
+    salary,
+    experience,
+    success: (data.success_probability * 100).toFixed(2),
+    risk: (data.risk_score * 100).toFixed(2),
+  },
+  ...history,
+];
+
+setHistory(updatedHistory);
+
+localStorage.setItem(
+  "predictionHistory",
+  JSON.stringify(updatedHistory)
+);
 
     } catch (error) {
       alert("Error connecting to backend");
@@ -45,7 +71,13 @@ function App() {
       setLoading(false);
     }
   };
+useEffect(() => {
+  const savedHistory = localStorage.getItem("predictionHistory");
 
+  if (savedHistory) {
+    setHistory(JSON.parse(savedHistory));
+}
+}, []);
   // 🔥 Decision Logic
   const getDecision = () => {
     if (!result) return "";
@@ -53,6 +85,18 @@ function App() {
     if (result.success_probability > 0.4) return "Moderate ⚖️";
     return "High Risk ⚠️";
   };
+  const getConfidence = () => {
+  if (!result) return "";
+
+  const confidence = (
+    Math.max(
+      result.success_probability,
+      result.risk_score
+    ) * 100
+  ).toFixed(2);
+
+  return confidence + "%";
+};
 
   return (
     <div style={{
@@ -142,6 +186,9 @@ function App() {
             <p>
               💡 <b>Decision:</b> {getDecision()}
             </p>
+            <p>
+  🎯 <b>Model Confidence:</b> {getConfidence()}
+</p>
 
             {/* 🔥 GRAPH */}
             <div style={{ marginTop: "20px" }}>
@@ -181,10 +228,107 @@ function App() {
                   }
                 }}
               />
+              {/* Prediction History */}
+<div style={{ marginTop: "25px" }}>
+  <h3>📜 Prediction History</h3>
+
+  <table
+    style={{
+      width: "100%",
+      borderCollapse: "collapse",
+      marginTop: "10px",
+      fontSize: "14px"
+    }}
+  >
+    <thead>
+      <tr style={{ background: "#007bff", color: "white" }}>
+        <th style={{ padding: "8px" }}>Salary</th>
+        <th style={{ padding: "8px" }}>Exp</th>
+        <th style={{ padding: "8px" }}>Success</th>
+      </tr>
+    </thead>
+
+    <tbody>
+      {history.map((item, index) => (
+        <tr key={index}>
+          <td style={{ padding: "8px", border: "1px solid #ddd" }}>
+            {item.salary}
+          </td>
+
+          <td style={{ padding: "8px", border: "1px solid #ddd" }}>
+            {item.experience}
+          </td>
+
+          <td style={{ padding: "8px", border: "1px solid #ddd" }}>
+            {item.success}%
+          </td>
+        </tr>
+      ))}
+    </tbody>
+  </table>
+</div>
             </div>
 
           </div>
         )}
+        {history.length > 0 && (
+  <div
+    style={{
+      marginTop: "20px",
+      background: "#ffffff",
+      padding: "15px",
+      borderRadius: "10px",
+      boxShadow: "0 0 10px rgba(0,0,0,0.1)",
+    }}
+  >
+    <h3>📜 Prediction History</h3>
+    <button
+  onClick={() => setHistory([])}
+  style={{
+    marginBottom: "15px",
+    padding: "8px 15px",
+    background: "#dc3545",
+    color: "white",
+    border: "none",
+    borderRadius: "5px",
+    cursor: "pointer"
+  }}
+>
+  🗑 Clear History
+</button>
+
+    <table
+      style={{
+        width: "100%",
+        borderCollapse: "collapse",
+      }}
+    >
+      <thead>
+        <tr>
+          <th>Salary</th>
+          <th>Exp</th>
+          <th>Success</th>
+          <th>Risk</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        {history.map((item, index) => (
+          <tr key={index}>
+            <td>{item.salary}</td>
+            <td>{item.experience}</td>
+            <td style={{ color: "green" }}>
+              {item.success}%
+            </td>
+            <td style={{ color: "red" }}>
+              {item.risk}%
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+)}
       </div>
     </div>
   );
